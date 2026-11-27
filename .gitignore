@@ -1,8 +1,10 @@
 node_modules/
 dist/
 .expo/
+.expo-export-check/
 .env
 *.log
 coverage/
-apps/api/drizzle/
+artifacts/
+*.apk
 

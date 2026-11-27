@@ -16,5 +16,8 @@
   },
   "engines": {
     "node": ">=22"
+  },
+  "allowScripts": {
+    "llama.rn@0.12.9": true
   }
 }
