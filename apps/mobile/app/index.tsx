@@ -6,7 +6,6 @@ import { useAuthStore } from '../src/features/auth/auth-store'
 import { ConversationScreen } from '../src/features/conversation/conversation-screen'
 import { OnboardingScreen } from '../src/features/learning/onboarding-screen'
 import { useLearningStore } from '../src/features/learning/learning-store'
-import { ModelSetupScreen } from '../src/features/model/model-setup-screen'
 import { useModelStore } from '../src/features/model/model-store'
 
 export default function Index() {
@@ -27,10 +26,9 @@ export default function Index() {
 }
 
 function ProductApp() {
-  const [useDemo, setUseDemo] = useState(false)
   const [history, setHistory] = useState<ProductStage[]>([])
   const { profile, hydrated, hydrate } = useLearningStore()
-  const { status, modelUri, check } = useModelStore()
+  const { status, modelUri, speechModelUri, check, download, progress, speechProgress, preparationStage, error } = useModelStore()
 
   useEffect(() => {
     void hydrate()
@@ -38,7 +36,7 @@ function ProductApp() {
   }, [check, hydrate])
 
   useEffect(() => {
-    if (hydrated && history.length === 0) setHistory([profile ? 'model' : 'onboarding'])
+    if (hydrated && history.length === 0) setHistory([profile ? 'conversation' : 'onboarding'])
   }, [history.length, hydrated, profile])
 
   const goBack = () => {
@@ -56,28 +54,37 @@ function ProductApp() {
   const push = (stage: ProductStage) => setHistory((current) => current.at(-1) === stage ? current : [...current, stage])
   const stage = history.at(-1)
 
+  useEffect(() => {
+    if (profile && stage === 'conversation' && status === 'missing') void download()
+  }, [profile, stage, status, download])
+
   if (!hydrated || status === 'checking' || !stage) {
     return <View className="flex-1 items-center justify-center bg-cream"><ActivityIndicator color="#5B8E7D" /></View>
   }
   if (stage === 'onboarding') {
-    return <OnboardingScreen onBack={history.length > 1 ? goBack : undefined} onComplete={() => push('model')} />
+    return <OnboardingScreen onBack={history.length > 1 ? goBack : undefined} onComplete={() => push('conversation')} />
   }
-  if (stage === 'model' && profile) {
-    return (
-      <ModelSetupScreen
-        onBack={history.length > 1 ? goBack : undefined}
-        onContinue={() => { setUseDemo(false); push('conversation') }}
-        onUseDemo={() => { setUseDemo(true); push('conversation') }}
-      />
-    )
+  if (profile && Platform.OS !== 'web' && status !== 'ready') {
+    return <View className="flex-1 items-center justify-center bg-cream px-8">
+      <Text className="text-2xl font-bold text-ink">Preparando sua conversa</Text>
+      <Text className="mt-4 text-center text-base text-ink/60">{Platform.OS === 'android' ? 'Estamos preparando os recursos do aplicativo no seu aparelho. Isso pode levar alguns minutos no primeiro acesso.' : 'Na primeira vez, precisamos baixar os recursos de voz e conversação. Mantenha o aplicativo aberto e use Wi-Fi.'}</Text>
+      {status === 'error' ? <><Text className="mt-4 text-center text-sm text-coral">{error ?? 'Não foi possível preparar os recursos.'}</Text><Pressable className="mt-6 rounded-2xl bg-ink px-6 py-4" onPress={() => void download()}><Text className="font-semibold text-white">Tentar novamente</Text></Pressable></> : <View className="mt-8 w-full max-w-sm"><View className="flex-row justify-between"><Text className="text-sm font-semibold text-ink">{Platform.OS === 'android' ? preparationStage : 'Baixando recursos'}</Text><Text className="text-sm font-semibold text-sage">{Math.round((Platform.OS === 'android' ? progress : progress * 0.89 + speechProgress * 0.11) * 100)}%</Text></View><View className="mt-3 h-3 overflow-hidden rounded-full bg-ink/10"><View className="h-3 rounded-full bg-sage" style={{ width: `${Math.round((Platform.OS === 'android' ? progress : progress * 0.89 + speechProgress * 0.11) * 100)}%` }} /></View></View>}
+    </View>
   }
   if (profile) {
-    return <ConversationScreen profile={profile} modelUri={status === 'ready' && !useDemo ? modelUri : null} onBack={goBack} />
+    return (
+      <ConversationScreen
+        profile={profile}
+        modelUri={status === 'ready' ? modelUri : null}
+        speechModelUri={status === 'ready' ? speechModelUri : null}
+        onBack={goBack}
+      />
+    )
   }
   return <View className="flex-1 items-center justify-center bg-cream"><ActivityIndicator color="#5B8E7D" /></View>
 }
 
-type ProductStage = 'onboarding' | 'model' | 'conversation'
+type ProductStage = 'onboarding' | 'conversation'
 
 function VerifyEmailScreen() {
   const {

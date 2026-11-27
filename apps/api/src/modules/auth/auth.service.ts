@@ -18,7 +18,7 @@ export class AuthService {
     private readonly onEmailError: (error: unknown) => void = () => undefined,
   ) {}
 
-  async register(input: RegisterInput): Promise<Session> {
+  async register(input: RegisterInput, options: { skipVerificationEmail?: boolean } = {}): Promise<Session> {
     if (await this.repository.findUserByEmail(input.email)) {
       throw new AppError('Este e-mail já está em uso', 409, 'EMAIL_ALREADY_EXISTS')
     }
@@ -43,7 +43,7 @@ export class AuthService {
       }
       throw error
     }
-    await this.sendVerificationEmail(result.user, verificationToken)
+    if (!options.skipVerificationEmail) await this.sendVerificationEmail(result.user, verificationToken)
     return this.sessionResponse(result.user, result.session, tokenSecret)
   }
 
@@ -60,6 +60,13 @@ export class AuthService {
       expiresAt: refreshExpiration(),
     })
     return this.sessionResponse(user, session, tokenSecret)
+  }
+
+  async registerVerifiedForDevelopment(input: RegisterInput): Promise<Session> {
+    const session = await this.register(input, { skipVerificationEmail: true })
+    const user = await this.repository.markEmailVerifiedForDevelopment(session.user.id)
+    if (!user) throw new Error('Não foi possível confirmar a conta de teste')
+    return { ...session, user: publicUser(user) }
   }
 
   async refresh(refreshToken: string): Promise<Session> {

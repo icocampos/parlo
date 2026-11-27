@@ -16,6 +16,13 @@ export class AuthRepository {
     return this.db.query.users.findFirst({ where: eq(users.id, id) })
   }
 
+  async markEmailVerifiedForDevelopment(id: string) {
+    const [user] = await this.db.update(users)
+      .set({ emailVerifiedAt: new Date(), updatedAt: new Date() })
+      .where(eq(users.id, id)).returning()
+    return user
+  }
+
   async createUserWithSession(input: {
     email: string
     passwordHash: string

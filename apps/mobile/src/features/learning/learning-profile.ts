@@ -7,10 +7,11 @@ export const languages = [
 ] as const
 
 export type TargetLanguage = typeof languages[number]['code']
+export type NativeLanguage = TargetLanguage | 'pt-BR'
 export type LearningLevel = 'beginner' | 'intermediate' | 'advanced'
 
 export type LearningProfile = {
-  nativeLanguage: 'pt-BR'
+  nativeLanguage: NativeLanguage
   targetLanguage: TargetLanguage
   level: LearningLevel
 }

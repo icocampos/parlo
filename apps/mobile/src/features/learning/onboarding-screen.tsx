@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Pressable, ScrollView, Text, View } from 'react-native'
-import { languages, type LearningLevel, type TargetLanguage } from './learning-profile'
+import { languages, type LearningLevel, type NativeLanguage, type TargetLanguage } from './learning-profile'
 import { useLearningStore } from './learning-store'
 
 const levels: Array<{ value: LearningLevel; label: string; description: string }> = [
@@ -12,10 +12,11 @@ const levels: Array<{ value: LearningLevel; label: string; description: string }
 export function OnboardingScreen({ onBack, onComplete }: { onBack?: () => void; onComplete: () => void }) {
   const save = useLearningStore((state) => state.save)
   const [language, setLanguage] = useState<TargetLanguage>('en')
+  const [nativeLanguage, setNativeLanguage] = useState<NativeLanguage>('pt-BR')
   const [level, setLevel] = useState<LearningLevel>('beginner')
 
   const continueToModel = async () => {
-    await save(language, level)
+    await save(nativeLanguage, language, level)
     onComplete()
   }
 
@@ -26,7 +27,13 @@ export function OnboardingScreen({ onBack, onComplete }: { onBack?: () => void; 
       <Text className="mt-3 text-4xl font-bold text-ink">O que você quer aprender?</Text>
       <Text className="mb-7 mt-3 text-base text-ink/60">Isso personaliza o tutor que funcionará no seu aparelho.</Text>
 
-      <Text className="mb-3 text-sm font-bold text-ink">Idioma</Text>
+      <Text className="mb-3 text-sm font-bold text-ink">Sua língua materna</Text>
+      <View className="mb-7 flex-row flex-wrap gap-3">
+        {[{ code: 'pt-BR' as const, label: 'Português' }, ...languages].map((item) => (
+          <Choice key={item.code} selected={nativeLanguage === item.code} label={item.label} onPress={() => setNativeLanguage(item.code)} />
+        ))}
+      </View>
+      <Text className="mb-3 text-sm font-bold text-ink">Língua que deseja aprender</Text>
       <View className="mb-7 flex-row flex-wrap gap-3">
         {languages.map((item) => (
           <Choice key={item.code} selected={language === item.code} label={item.label} onPress={() => setLanguage(item.code)} />

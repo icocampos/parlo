@@ -24,7 +24,7 @@ Em outro terminal:
 npm run dev:mobile
 ```
 
-O Expo Web e o Expo Go executam o modo de demonstração. A IA real usa `llama.rn`, que contém código nativo e exige um Development Build:
+O Expo Web e o Expo Go executam o modo de demonstração. A conversa por voz real usa `llama.rn` e `whisper.rn`, que contêm código nativo e exigem um Development Build:
 
 ```bash
 cd apps/mobile
@@ -38,7 +38,9 @@ cd apps/mobile
 npx eas build --profile development --platform android
 ```
 
-No primeiro acesso, escolha idioma e nível. O app oferece o download local do Qwen2.5 0.5B Instruct Q4_K_M (~491 MB); depois do download, a conversa é processada no aparelho.
+No primeiro acesso, escolha idioma e nível. O app baixa o Qwen2.5 0.5B Instruct Q4_K_M (~491 MB) para a conversa e o Whisper Base Q5_1 (~57 MB) para reconhecer a fala. Depois do download, toque no microfone, fale e toque novamente para enviar. A transcrição e a resposta da IA são processadas no aparelho; a resposta é lida pela voz instalada no sistema.
+
+O modo web/demonstração simula a fala do aluno porque os runtimes locais são nativos. Para testar microfone e transcrição reais, gere um Development Build ou APK novo. No Android, instale a voz do idioma desejado em **Configurações > Texto para voz** para que a resposta também funcione offline.
 
 #### Android no Windows
 

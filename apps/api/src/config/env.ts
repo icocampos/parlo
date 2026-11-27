@@ -10,6 +10,7 @@ const envSchema = z.object({
   EMAIL_FROM: z.string().min(3).optional(),
   API_PUBLIC_URL: z.url().optional(),
   CORS_ORIGINS: z.string().optional(),
+  DEV_AUTH_SECRET: z.string().min(32).optional(),
   GOOGLE_CLIENT_ID: z.string().min(1).optional(),
   APPLE_CLIENT_ID: z.string().min(1).optional(),
 }).superRefine((value, context) => {

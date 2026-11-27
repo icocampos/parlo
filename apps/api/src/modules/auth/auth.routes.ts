@@ -5,6 +5,8 @@ import { AppError } from '../../shared/errors/app-error.js'
 import type { EmailService } from '../../shared/email/email.service.js'
 import { AuthRepository } from './auth.repository.js'
 import { accessTokenExpiresIn, AuthService } from './auth.service.js'
+import { env } from '../../config/env.js'
+import { createHash, timingSafeEqual } from 'node:crypto'
 
 type AuthRoutesOptions = { db?: Database | undefined; emailService: EmailService }
 
@@ -24,6 +26,17 @@ export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (app, opt
   app.post('/register', { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, async (request, reply) => reply.status(201).send(
     await service.register(registerSchema.parse(request.body)),
   ))
+  if (env.NODE_ENV === 'development' && env.DEV_AUTH_SECRET) {
+    const secret = env.DEV_AUTH_SECRET
+    app.post('/dev/register-verified', { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, async (request, reply) => {
+      const provided = request.headers['x-dev-auth-secret']
+      const hash = (value: string) => createHash('sha256').update(value).digest()
+      if (typeof provided !== 'string' || !timingSafeEqual(hash(provided), hash(secret))) {
+        throw new AppError('Não autorizado', 401, 'UNAUTHORIZED')
+      }
+      return reply.status(201).send(await service.registerVerifiedForDevelopment(registerSchema.parse(request.body)))
+    })
+  }
   app.post('/login', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (request, reply) => reply.send(await service.login(loginSchema.parse(request.body))))
   app.post('/refresh', { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } }, async (request, reply) => {
     const { refreshToken } = refreshSessionSchema.parse(request.body)
