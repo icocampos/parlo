@@ -15,7 +15,17 @@ type ConversationScreenProps = {
 }
 
 export function ConversationScreen({ profile, modelUri, speechModelUri, onBack }: ConversationScreenProps) {
-  const { stream, isStreaming } = useAudioStream({ sampleRate: 16_000, channels: 1, encoding: 'int16' })
+  const [microphoneLevel, setMicrophoneLevel] = useState(0)
+  const lastMeterUpdate = useRef(0)
+  const { stream, isStreaming } = useAudioStream({ sampleRate: 16_000, channels: 1, encoding: 'int16', onBuffer: (buffer) => {
+    const now = Date.now()
+    if (now - lastMeterUpdate.current < 200) return
+    lastMeterUpdate.current = now
+    const samples = new Int16Array(buffer.data)
+    let peak = 0
+    for (let index = 0; index < samples.length; index += 1) peak = Math.max(peak, Math.abs(samples[index] ?? 0))
+    setMicrophoneLevel(Math.min(peak / 6000, 1))
+  } })
   const [recordingSeconds, setRecordingSeconds] = useState(0)
   const recording = useRef(false)
   const stopping = useRef(false)
@@ -137,6 +147,7 @@ export function ConversationScreen({ profile, modelUri, speechModelUri, onBack }
         reportError('Fale por pelo menos um segundo antes de enviar.')
         return
       }
+      stopping.current = false
       await processRecording(result.uri, profile, modelUri!, speechModelUri!)
     } catch {
       stream.stop()
@@ -212,6 +223,7 @@ export function ConversationScreen({ profile, modelUri, speechModelUri, onBack }
           <VoiceOrb phase={phase} />
           <Text className="mt-6 text-center text-2xl font-bold text-ink">{phaseCopy.title}</Text>
           <Text className="mt-2 max-w-sm text-center text-sm leading-5 text-ink/55">{phaseCopy.subtitle}</Text>
+          {phase === 'listening' && !demoMode && <View className="mt-4 w-40"><View className="h-2 overflow-hidden rounded-full bg-ink/10"><View className="h-2 rounded-full bg-sage" style={{ width: `${Math.round(microphoneLevel * 100)}%` }} /></View><Text className="mt-2 text-center text-xs text-ink/50">Nível do microfone</Text></View>}
           {busy && <ActivityIndicator className="mt-4" color="#5B8E7D" />}
         </View>
 

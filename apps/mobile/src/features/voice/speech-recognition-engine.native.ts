@@ -1,5 +1,6 @@
 import { Platform } from 'react-native'
 import type { TargetLanguage } from '../learning/learning-profile'
+import { describeNativeError, nativeFilePath } from './native-file-path'
 
 type WhisperModule = typeof import('whisper.rn/index')
 type WhisperContext = Awaited<ReturnType<WhisperModule['initWhisper']>>
@@ -16,11 +17,16 @@ export class LocalSpeechRecognitionEngine {
 
     const loadVersion = ++this.loadVersion
     const { initWhisper } = await import('whisper.rn/index')
-    const context = await initWhisper({
-      filePath: modelUri,
-      useGpu: Platform.OS === 'ios',
-      useFlashAttn: Platform.OS === 'ios',
-    })
+    let context: WhisperContext
+    try {
+      context = await initWhisper({
+        filePath: nativeFilePath(modelUri),
+        useGpu: Platform.OS === 'ios',
+        useFlashAttn: Platform.OS === 'ios',
+      })
+    } catch (error) {
+      throw new Error(`Não foi possível carregar o reconhecimento de voz: ${describeNativeError(error)}`)
+    }
     if (loadVersion !== this.loadVersion) {
       await context.release()
       throw new Error('Carregamento do reconhecimento de voz cancelado.')
@@ -32,17 +38,20 @@ export class LocalSpeechRecognitionEngine {
   async transcribe(audioUri: string, language: TargetLanguage) {
     if (!this.context) throw new Error('O modelo de reconhecimento de voz não foi carregado.')
 
-    const { promise, stop } = this.context.transcribe(audioUri, {
-      language,
-      translate: false,
-      maxThreads: 4,
-      temperature: 0,
-      beamSize: 5,
-    })
-    this.stopCurrentTranscription = stop
     try {
-      const { result } = await promise
+      const { promise, stop } = this.context.transcribe(nativeFilePath(audioUri), {
+        language,
+        translate: false,
+        maxThreads: 4,
+        temperature: 0,
+        beamSize: 5,
+      })
+      this.stopCurrentTranscription = stop
+      const { result, isAborted } = await promise
+      if (isAborted) throw new Error('Transcrição interrompida')
       return cleanTranscript(result)
+    } catch (error) {
+      throw new Error(`Não foi possível transcrever o áudio: ${describeNativeError(error)}`)
     } finally {
       this.stopCurrentTranscription = null
     }

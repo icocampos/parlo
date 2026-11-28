@@ -4,6 +4,7 @@ import { create } from 'zustand'
 import type { LearningProfile } from '../learning/learning-profile'
 import { LocalSpeechRecognitionEngine } from '../voice/speech-recognition-engine'
 import { speakTutorText, stopTutorSpeech } from '../voice/speech-synthesis-engine'
+import { describeNativeError } from '../voice/native-file-path'
 import { DemoConversationEngine, LlamaConversationEngine, type ConversationMessage, type LocalConversationEngine } from './local-conversation-engine'
 
 export type ConversationPhase = 'idle' | 'listening' | 'transcribing' | 'thinking' | 'speaking' | 'error'
@@ -67,7 +68,7 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
     } catch (error) {
       if (isCurrentOperation(operation)) set({ phase: 'error', error: readableError(error, 'Não foi possível entender sua fala.') })
     } finally {
-      await speechRecognitionEngine.dispose()
+      try { await speechRecognitionEngine.dispose() } catch { /* Não impedir novas tentativas se a liberação falhar. */ }
       deleteTemporaryRecording(audioUri)
     }
   },
@@ -214,7 +215,8 @@ function deleteTemporaryRecording(uri: string) {
 }
 
 function readableError(error: unknown, fallback: string) {
-  return error instanceof Error && error.message ? error.message : fallback
+  const detail = describeNativeError(error)
+  return detail === 'erro sem detalhes' ? fallback : detail
 }
 
 function wait(milliseconds: number) {
